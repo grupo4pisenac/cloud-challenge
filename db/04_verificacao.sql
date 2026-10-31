@@ -2,9 +2,10 @@
 -- 04_verificacao.sql  |  Checagens de CA1-CA5 e das restrições, direto no banco
 -- Executar DEPOIS de 01 e 02, em banco recém-criado. Não deixa lixo:
 -- os testes que escrevem usam transação com ROLLBACK.
--- ATENÇÃO: inserções rejeitadas/revertidas CONSOMEM números da sequência
--- (próximo cliente real pularia de CLI-0057 para ~CLI-0067). Rode em banco
--- local/de teste, ou aceite o "buraco" no banco da entrega.
+-- NOTA: inserções rejeitadas/revertidas consomem números da sequência.
+-- No FINAL deste script a sequência é ressincronizada com o maior código
+-- existente, então o próximo cliente real continua de onde parou
+-- (ex.: CLI-0057), sem "buraco" causado pelos testes.
 -- Cada linha de saída traz: teste | esperado | obtido | OK/FALHA
 -- =====================================================================
 
@@ -73,3 +74,9 @@ RETURNING codigo, nome;
 ROLLBACK;
 -- Obs.: a sequência NÃO volta no ROLLBACK (é o comportamento esperado e
 -- aparece como "buraco" na numeração; ver docs/decisoes-dados.md).
+
+\echo '--- Ressincroniza a sequência com o maior código existente (remove o buraco dos testes)'
+SELECT setval('clientes_codigo_seq',
+              COALESCE(max(substring(codigo FROM 5)::int), 1),
+              count(*) > 0) AS sequencia_ajustada_para
+FROM clientes;

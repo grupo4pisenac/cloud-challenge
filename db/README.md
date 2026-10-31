@@ -20,7 +20,7 @@ export DATABASE_URL="postgresql://..."
 psql "$DATABASE_URL" -f db/01_schema.sql
 psql "$DATABASE_URL" -f db/02_seed.sql
 
-# 3) Verificação (opcional; consome números da sequência, prefira banco local)
+# 3) Verificação (opcional; ressincroniza a sequência no final)
 psql "$DATABASE_URL" -f db/04_verificacao.sql
 ```
 
