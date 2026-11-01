@@ -34,11 +34,14 @@ public class ClienteService {
         }
         try {
             Cliente cliente = repository.saveAndFlush(
-                    new Cliente(req.nome().trim(), email, req.telefone(), req.cidade()));
+                    new Cliente(req.nome().trim(), email, req.telefone(), req.cidade().trim()));
             return ClienteResponse.de(cliente);
         } catch (DataIntegrityViolationException e) {
-            // Corrida entre duas requisições com o mesmo e-mail: a UNIQUE do banco decide
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "e-mail já cadastrado");
+            // Corrida entre duas requisições com o mesmo e-mail: o índice único do banco decide
+            if (String.valueOf(e.getMessage()).contains("clientes_email_uq")) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "e-mail já cadastrado");
+            }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dados inválidos");
         }
     }
 
@@ -68,8 +71,12 @@ public class ClienteService {
     @Transactional
     public ClienteResponse atualizar(String codigo, ClienteUpdateRequest req) {
         Cliente cliente = obter(codigo);
-        cliente.setTelefone(req.telefone());
-        cliente.setCidade(req.cidade());
+        if (req.telefone() != null) {
+            cliente.setTelefone(req.telefone());
+        }
+        if (req.cidade() != null) {
+            cliente.setCidade(req.cidade().trim());
+        }
         return ClienteResponse.de(cliente);
     }
 
