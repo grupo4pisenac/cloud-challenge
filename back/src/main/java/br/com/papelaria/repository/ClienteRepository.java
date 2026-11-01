@@ -20,7 +20,7 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
             SELECT * FROM clientes
             WHERE nome ILIKE '%' || :nome || '%'
               AND (ativo = true OR :incluirInativos)
-            ORDER BY nome, codigo
+            ORDER BY nome, id
             """,
             countQuery = """
             SELECT count(*) FROM clientes
