@@ -24,6 +24,7 @@ public class ErroHandler {
     public ResponseEntity<Map<String, String>> validacao(MethodArgumentNotValidException e) {
         String msg = e.getBindingResult().getFieldErrors().stream()
                 .map(f -> f.getDefaultMessage())
+                .distinct()
                 .sorted()
                 .collect(Collectors.joining("; "));
         return erro(HttpStatus.BAD_REQUEST, msg);
