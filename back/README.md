@@ -11,30 +11,41 @@ docker compose up -d
 ./mvnw spring-boot:run
 ```
 
-A API sobe em `http://localhost:8080`. O Flyway cria a tabela e insere 50 clientes fictícios.
+A API sobe em `http://localhost:8080`. O Flyway cria a tabela e insere os 56 clientes fictícios do grupo (53 ativos, 3 inativos).
 
 Para testar pelo navegador, abra `http://localhost:8080`: a raiz redireciona para o Swagger UI (`/swagger-ui.html`), com todos os endpoints e o botão "Try it out".
+
+## Banco de dados
+
+O banco é criado pelo Flyway a partir de `src/main/resources/db/migration`:
+
+| Migration | O que faz |
+|---|---|
+| `V1__criar_tabela.sql` | Extensão `pg_trgm`, sequence, tabela `clientes`, restrições e índices |
+| `V2__seed.sql` | 56 clientes fictícios (53 ativos, 3 inativos) |
+
+Para mudar o banco, crie uma **nova** migration (V3, V4…). Nunca edite V1 ou V2 depois de aplicadas.
 
 ## Endpoints
 
 | Método | Rota | O que faz |
 |---|---|---|
-| POST | `/clientes` | Cadastra (nome, email, telefone, cidade). 201 |
+| POST | `/clientes` | Cadastra (nome, email, telefone, cidade — todos obrigatórios). 201 |
 | GET | `/clientes?nome=&incluir_inativos=false&pagina=1` | Busca por parte do nome, 10 por página |
 | GET | `/clientes/{codigo}?incluir_inativos=false` | Busca por código. 404 se não achar |
-| PATCH | `/clientes/{codigo}` | Edita telefone e cidade |
+| PATCH | `/clientes/{codigo}` | Edita telefone e/ou cidade (o que não for enviado fica igual) |
 | PATCH | `/clientes/{codigo}/inativar` | Inativa. 204 |
 | PATCH | `/clientes/{codigo}/reativar` | Reativa. 204 |
 
 ## Critérios de aceite (curl)
 
-**CA1** — buscar "silva" retorna "Ana SILVA" e "Silvana Costa":
+**CA1** — buscar "silva" retorna Ana Silva, Jéssica da Silva, Roberto Silva e Silvana Costa:
 
 ```bash
 curl "http://localhost:8080/clientes?nome=silva"
 ```
 
-**CA2** — buscar por código:
+**CA2** — buscar por código (CLI-0007 = Ana Silva):
 
 ```bash
 curl http://localhost:8080/clientes/CLI-0007
@@ -44,19 +55,19 @@ curl http://localhost:8080/clientes/CLI-0007
 
 ```bash
 curl -i -X POST http://localhost:8080/clientes -H "Content-Type: application/json" \
-  -d '{"nome":"Teste","email":"cliente1@exemplo.com"}'
+  -d '{"nome":"Teste","email":"ana.silva@exemplo.com","telefone":"(81) 91111-1111","cidade":"Recife"}'
 
 curl -i -X POST http://localhost:8080/clientes -H "Content-Type: application/json" \
-  -d '{"nome":"Teste","email":"testeexemplo.com"}'
+  -d '{"nome":"Teste","email":"testeexemplo.com","telefone":"(81) 91111-1111","cidade":"Recife"}'
 ```
 
-**CA4** — inativar, buscar, buscar incluindo inativos, reativar:
+**CA4** — inativar Silvana Costa (CLI-0008), buscar, buscar incluindo inativos, reativar:
 
 ```bash
-curl -i -X PATCH http://localhost:8080/clientes/CLI-0002/inativar
-curl "http://localhost:8080/clientes?nome=silva"                         # só Ana
-curl "http://localhost:8080/clientes?nome=silva&incluir_inativos=true"   # as duas
-curl -i -X PATCH http://localhost:8080/clientes/CLI-0002/reativar
+curl -i -X PATCH http://localhost:8080/clientes/CLI-0008/inativar
+curl "http://localhost:8080/clientes?nome=silva"                         # 3, sem a Silvana
+curl "http://localhost:8080/clientes?nome=silva&incluir_inativos=true"   # as 4
+curl -i -X PATCH http://localhost:8080/clientes/CLI-0008/reativar
 ```
 
 **CA5** — página 2 traz os clientes 11 a 20 (ordenados por nome):
@@ -84,6 +95,8 @@ curl "http://localhost:8080/clientes?pagina=2"
 A porta não é fixada no projeto: o App Service define por variável de ambiente.
 
 Opcional: guardar os valores no Key Vault e usar referências nas variáveis, ex.: `@Microsoft.KeyVault(SecretUri=https://<cofre>.vault.azure.net/secrets/db-password/)`.
+
+> Se o banco do Azure já tiver sido criado rodando os scripts do banco pelo `psql`, o Flyway não sobe: ele recusa um schema que já tem tabelas mas não tem o histórico dele (`flyway_schema_history`). Nesse caso, ou comece de um banco vazio, ou configure `spring.flyway.baseline-on-migrate=true` e `spring.flyway.baseline-version=2`.
 
 ## Decisões
 
