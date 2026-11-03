@@ -1,0 +1,11 @@
+{
+  "name": "papelaria-front-desafio-08",
+  "version": "1.0.0",
+  "description": "Frontend Web — Carteira de Clientes da Papelaria (Desafio 08 - Cloud Challenge)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}
+

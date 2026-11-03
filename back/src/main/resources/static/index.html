@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Papelaria Central — Carteira de Clientes (Desafio 08)</title>
+  <meta name="description" content="Sistema de gestão de carteira de clientes da papelaria com busca rápida por nome e código, paginação e inativação lógica." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Top Bar / Header -->
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title-row">
+            <h1 class="brand-title">Papelaria Central</h1>
+            <span class="badge-challenge">Desafio 08</span>
+          </div>
+          <p class="brand-subtitle">Carteira de Clientes • Balcão de Atendimento</p>
+        </div>
+      </div>
+
+      <!-- Status / Health & Actions -->
+      <div class="topbar-actions">
+        <!-- Live Clock & Health Pill (for Persistence Proof Prints) -->
+        <button type="button" id="btnHealthModal" class="health-pill" title="Clique para ver detalhes do /health e configurar a conexão da API">
+          <span id="healthDot" class="status-dot status-checking"></span>
+          <span class="health-pill-content">
+            <span id="healthModeLabel" class="health-mode">Conectando...</span>
+            <span class="health-divider">•</span>
+            <span id="healthStartedLabel" class="health-started mono" title="Campo iniciado_em da rota GET /health">iniciado_em: --</span>
+          </span>
+        </button>
+
+        <div class="clock-badge mono" id="liveClock" title="Data e hora atual (visível para evidências)">
+          --/--/---- --:--:--
+        </div>
+
+        <button type="button" id="btnApiLog" class="btn btn-secondary btn-sm" title="Inspecionar requisições HTTP enviadas ao servidor">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          <span>Inspector HTTP</span>
+          <span id="apiLogCount" class="counter-pill mono">0</span>
+        </button>
+
+        <button type="button" id="btnNovoCliente" class="btn btn-primary">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Novo Cliente</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Banner de aviso caso esteja usando Simulador Local por falta do backend rodando -->
+  <div id="simulationBanner" class="sim-banner hidden" role="status">
+    <div class="container sim-banner-inner">
+      <div class="sim-banner-text">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>
+          <strong>Modo Simulação Local ativo:</strong> O servidor backend (<code id="simBannerUrl" class="mono">http://localhost:8080</code>) não respondeu, então os <strong>56 clientes fictícios do seed (<code class="mono">V2__seed.sql</code>)</strong> e todas as regras do Desafio 08 estão sendo simulados no navegador.
+        </span>
+      </div>
+      <div class="sim-banner-actions">
+        <button type="button" id="btnRetryApi" class="btn btn-xs btn-sim-retry">Reconectar ao Backend</button>
+        <button type="button" id="btnConfigApiBanner" class="btn btn-xs btn-sim-config">Configurar URL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="container main-content">
+    <!-- KPI Summary Strip -->
+    <section class="kpi-grid" aria-label="Resumo da carteira de clientes">
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Registros no Filtro</span>
+          <span class="kpi-icon kpi-icon-blue">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </span>
+        </div>
+        <div class="kpi-value mono" id="kpiTotalElementos">--</div>
+        <div class="kpi-foot" id="kpiFiltroStatus">Apenas clientes ativos</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Modo de Consulta (RF2)</span>
+          <span class="kpi-icon kpi-icon-indigo">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+        </div>
+        <div class="kpi-value kpi-value-sm" id="kpiModoBusca">Listagem por Nome</div>
+        <div class="kpi-foot mono" id="kpiRotaAtiva">GET /clientes?pagina=1</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <span class="kpi-label">Paginação (RF5)</span>
+          <span class="kpi-icon kpi-icon-emerald">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </span>
+        </div>
+        <div class="kpi-value mono" id="kpiPaginaAtual">1 / 1</div>
+        <div class="kpi-foot" id="kpiIntervaloItens">10 registros por página</div>
+      </div>
+
+      <div class="kpi-card kpi-card-interactive" id="kpiLastHttpCard" title="Clique para abrir o Inspector HTTP">
+        <div class="kpi-header">
+          <span class="kpi-label">Última Resposta HTTP</span>
+          <span id="kpiHttpBadge" class="http-badge http-2xx mono">200 OK</span>
+        </div>
+        <div class="kpi-value kpi-value-sm mono" id="kpiLastEndpoint">GET /clientes</div>
+        <div class="kpi-foot" id="kpiLastTiming">Latência: -- ms</div>
+      </div>
+    </section>
+
+    <!-- Search & Filter Control Panel -->
+    <section class="control-panel" aria-label="Busca e filtros de clientes">
+      <div class="search-row">
+        <!-- Segmented Search Mode Selector (RF2: Nome Parcial vs Código Exato) -->
+        <div class="segmented-control" role="tablist" aria-label="Tipo de busca">
+          <button type="button" role="tab" id="tabBuscaNome" class="seg-btn active" aria-selected="true" data-mode="nome">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Por Parte do Nome</span>
+          </button>
+          <button type="button" role="tab" id="tabBuscaCodigo" class="seg-btn" aria-selected="false" data-mode="codigo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 7 4 4 20 4 20 7"></polyline>
+              <line x1="9" y1="20" x2="15" y2="20"></line>
+              <line x1="12" y1="4" x2="12" y2="20"></line>
+            </svg>
+            <span>Por Código Exato</span>
+          </button>
+        </div>
+
+        <!-- Search Input Box -->
+        <form id="searchForm" class="search-input-group" novalidate>
+          <div class="search-input-wrapper">
+            <span class="search-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </span>
+            <input
+              type="text"
+              id="inputBusca"
+              class="search-input"
+              placeholder="Buscar por parte do nome (ex: silva, Ana, Oliveira)..."
+              autocomplete="off"
+              aria-label="Campo de busca de clientes"
+            />
+            <button type="button" id="btnLimparBusca" class="search-clear hidden" title="Limpar busca" aria-label="Limpar busca">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <button type="submit" class="btn btn-primary btn-search">
+            Buscar
+          </button>
+        </form>
+
+        <!-- Toggles: Incluir Inativos (RF4) & Mascarar Telefone (Extra LGPD) -->
+        <div class="filter-toggles">
+          <label class="toggle-control" title="RF4 / CA4: Exibe clientes inativados adicionando ?incluir_inativos=true na consulta">
+            <input type="checkbox" id="chkIncluirInativos" />
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+            <span class="toggle-label">Incluir inativos</span>
+          </label>
+
+          <label class="toggle-control" title="Extra LGPD: Mascara os números de telefone na listagem do balcão">
+            <input type="checkbox" id="chkMascararTelefone" />
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+            <span class="toggle-label">Mascarar tel. (LGPD)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Quick Acceptance Criteria & Presentation Shortcuts Bar (CA1–CA5) -->
+      <div class="shortcuts-bar">
+        <span class="shortcuts-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Atalhos de Demonstração (CA1–CA5):
+        </span>
+        <div class="shortcuts-list">
+          <button type="button" class="chip" data-preset="ca1" title="CA1: Buscar 'silva' encontra Ana Silva, Jéssica da Silva, Roberto Silva e Silvana Costa">
+            <span class="chip-tag">CA1</span> Buscar "silva"
+          </button>
+          <button type="button" class="chip" data-preset="ca2" title="CA2: Buscar o código exato CLI-0007 retorna exatamente Ana Silva">
+            <span class="chip-tag">CA2</span> Código CLI-0007
+          </button>
+          <button type="button" class="chip" data-preset="ca3" title="CA3: Abre o modal de cadastro pronto para demonstrar erro 409 (e-mail duplicado) e 400 (e-mail sem @)">
+            <span class="chip-tag">CA3</span> Testar 409 / 400
+          </button>
+          <button type="button" class="chip" data-preset="ca4" title="CA4: Filtra com ?incluir_inativos=true para exibir clientes inativos">
+            <span class="chip-tag">CA4</span> Mostrar Inativos
+          </button>
+          <button type="button" class="chip" data-preset="ca5" title="CA5: Vai para a Página 2 mostrando os clientes 11 a 20 ordenados por nome">
+            <span class="chip-tag">CA5</span> Página 2 (11 a 20)
+          </button>
+          <button type="button" class="chip chip-accent" data-preset="persistencia" title="Ponto de Controle 2: Cadastrar ou buscar registro G08-PALAVRA para prova de persistência">
+            <span class="chip-tag">PC2</span> G08-PALAVRA
+          </button>
+          <button type="button" class="chip chip-ghost" data-preset="reset" title="Voltar para a listagem padrão (Página 1, apenas ativos)">
+            Limpar Filtros
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Active Filter / API Call Banner -->
+    <div id="activeQueryBar" class="query-bar">
+      <div class="query-bar-left">
+        <span class="query-method mono" id="queryMethodBadge">GET</span>
+        <code class="query-url mono" id="queryUrlText">/clientes?nome=&amp;incluir_inativos=false&amp;pagina=1</code>
+      </div>
+      <div class="query-bar-right">
+        <span class="lgpd-note" title="Regra central RF4: Clientes nunca são excluídos fisicamente (DELETE) para manter integridade de histórico.">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          Exclusão lógica ativa (nunca excluir)
+        </span>
+        <button type="button" id="btnRefreshList" class="btn-icon-text" title="Recarregar dados do servidor">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Atualizar
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Data Table Card -->
+    <section class="table-card" aria-label="Lista de clientes">
+      <div class="table-responsive">
+        <table class="clientes-table">
+          <thead>
+            <tr>
+              <th class="col-ord" title="Posição na ordenação alfabética por nome">#</th>
+              <th class="col-codigo">Código</th>
+              <th class="col-nome">Cliente <span class="th-sort-indicator" title="Ordenado por nome (A-Z)">↑ A–Z</span></th>
+              <th class="col-email">E-mail</th>
+              <th class="col-telefone">Telefone</th>
+              <th class="col-cidade">Cidade</th>
+              <th class="col-status">Status</th>
+              <th class="col-acoes text-right">Ações no Balcão</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaClientesBody">
+            <!-- Preenchido via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty / Error State (ex: 404 Not Found ou busca vazia) -->
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-icon" id="emptyStateIcon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </div>
+        <div id="emptyHttpBadge" class="http-badge http-404 mono hidden">404 Not Found</div>
+        <h3 id="emptyStateTitle" class="empty-title">Nenhum cliente encontrado</h3>
+        <p id="emptyStateDesc" class="empty-desc">
+          Não encontramos clientes ativos para os critérios informados.
+        </p>
+        <div class="empty-actions">
+          <button type="button" id="btnEmptyToggleInativos" class="btn btn-secondary btn-sm hidden">
+            Buscar incluindo inativos (?incluir_inativos=true)
+          </button>
+          <button type="button" id="btnEmptyReset" class="btn btn-primary btn-sm">
+            Voltar para listagem completa
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Footer / Pagination (RF5: 10 em 10) -->
+      <footer id="paginationFooter" class="table-footer">
+        <div class="pagination-info" id="paginationSummary">
+          Mostrando <strong>1–10</strong> de <strong>53</strong> clientes
+        </div>
+        <nav class="pagination-controls" aria-label="Paginação de clientes">
+          <button type="button" id="btnPrevPage" class="page-btn" disabled>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            <span>Anterior</span>
+          </button>
+          <div id="pageNumbers" class="page-numbers">
+            <!-- Botões 1, 2, 3... via JS -->
+          </div>
+          <button type="button" id="btnNextPage" class="page-btn" disabled>
+            <span>Próxima</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </nav>
+      </footer>
+    </section>
+  </main>
+
+  <!-- =====================================================================
+       MODAL 1: CADASTRAR NOVO CLIENTE (RF1: POST /clientes)
+       ===================================================================== -->
+  <div id="modalCadastro" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalCadastroTitulo">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title-row">
+            <h2 id="modalCadastroTitulo" class="modal-title">Cadastrar Novo Cliente</h2>
+            <span class="endpoint-pill mono">POST /clientes</span>
+          </div>
+          <p class="modal-subtitle">
+            O código único (<code class="mono">CLI-XXXX</code>) é gerado automaticamente pela sequência do banco.
+          </p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="modalCadastro" aria-label="Fechar modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Quick Fill Helpers for Demo & CA3 Validation Testing -->
+      <div class="modal-preset-bar">
+        <span class="preset-label">Preenchimento rápido (Testes &amp; Pitch):</span>
+        <div class="preset-buttons">
+          <button type="button" id="btnFillFicticio" class="preset-btn">
+            + Dados Fictícios Válidos
+          </button>
+          <button type="button" id="btnFillPalavraDia" class="preset-btn preset-btn-accent">
+            + G08-PALAVRA (Persistência)
+          </button>
+          <button type="button" id="btnFillErro409" class="preset-btn preset-btn-warn" title="Preenche com ana.silva@exemplo.com para demonstrar 409 Conflict do servidor">
+            CA3: E-mail Repetido (409)
+          </button>
+          <button type="button" id="btnFillErro400" class="preset-btn preset-btn-warn" title="Preenche com e-mail sem @ para demonstrar 400 Bad Request do servidor">
+            CA3: E-mail sem @ (400)
+          </button>
+        </div>
+      </div>
+
+      <form id="formCadastro" class="modal-body" novalidate>
+        <!-- Server Response Alert inside Modal (shows 400 / 409 clearly for screenshots) -->
+        <div id="cadastroAlert" class="api-alert hidden" role="alert">
+          <div class="api-alert-header">
+            <span id="cadastroAlertStatus" class="http-badge http-400 mono">400 Bad Request</span>
+            <span class="api-alert-route mono">POST /clientes</span>
+          </div>
+          <div id="cadastroAlertMsg" class="api-alert-body mono"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="cadNome" class="form-label">
+            Nome Completo ou Código do Teste <span class="req">*</span>
+          </label>
+          <input
+            type="text"
+            id="cadNome"
+            name="nome"
+            class="form-input"
+            placeholder="Ex: Helena Vasconcelos ou G08-NIMBUS"
+            maxlength="120"
+            autocomplete="off"
+          />
+          <span class="form-hint">Obrigatório, até 120 caracteres. Use apenas dados fictícios.</span>
+        </div>
+
+        <div class="form-group">
+          <label for="cadEmail" class="form-label">
+            E-mail Fictício (Único) <span class="req">*</span>
+          </label>
+          <input
+            type="email"
+            id="cadEmail"
+            name="email"
+            class="form-input mono"
+            placeholder="nome.sobrenome@exemplo.com"
+            maxlength="254"
+            autocomplete="off"
+          />
+          <span class="form-hint">Deve conter <code class="mono">@</code> e domínio (ex: <code class="mono">@exemplo.com</code>). E-mail duplicado retorna <code class="mono">409 Conflict</code>.</span>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="cadTelefone" class="form-label">
+              Telefone <span class="req">*</span>
+            </label>
+            <input
+              type="text"
+              id="cadTelefone"
+              name="telefone"
+              class="form-input mono"
+              placeholder="(81) 90000-0099"
+              maxlength="20"
+              autocomplete="off"
+            />
+            <span class="form-hint">8 a 20 caracteres: dígitos, espaço, <code class="mono">+() -</code></span>
+          </div>
+
+          <div class="form-group">
+            <label for="cadCidade" class="form-label">
+              Cidade <span class="req">*</span>
+            </label>
+            <input
+              type="text"
+              id="cadCidade"
+              name="cidade"
+              class="form-input"
+              placeholder="Ex: Recife"
+              maxlength="80"
+              autocomplete="off"
+            />
+            <span class="form-hint">Obrigatória, até 80 caracteres.</span>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modalCadastro">Cancelar</button>
+          <button type="submit" id="btnSubmitCadastro" class="btn btn-primary">
+            <span>Cadastrar Cliente</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 2: EDITAR TELEFONE E CIDADE (RF3: PATCH /clientes/{codigo})
+       ===================================================================== -->
+  <div id="modalEditar" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalEditarTitulo">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title-row">
+            <h2 id="modalEditarTitulo" class="modal-title">Atualizar Contato do Cliente</h2>
+            <span id="editEndpointPill" class="endpoint-pill mono">PATCH /clientes/CLI-0001</span>
+          </div>
+          <p class="modal-subtitle">
+            Conforme <strong>RF3</strong>, apenas <strong>telefone</strong> e <strong>cidade</strong> são editáveis após o cadastro.
+          </p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="modalEditar" aria-label="Fechar modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <form id="formEditar" class="modal-body" novalidate>
+        <input type="hidden" id="editCodigoHidden" />
+
+        <div id="editarAlert" class="api-alert hidden" role="alert">
+          <div class="api-alert-header">
+            <span id="editarAlertStatus" class="http-badge http-400 mono">400 Bad Request</span>
+            <span id="editarAlertRoute" class="api-alert-route mono">PATCH /clientes</span>
+          </div>
+          <div id="editarAlertMsg" class="api-alert-body mono"></div>
+        </div>
+
+        <!-- Read-only Identification Summary -->
+        <div class="readonly-summary">
+          <div class="readonly-item">
+            <span class="readonly-label">Código</span>
+            <span id="editCodigoDisplay" class="readonly-value mono badge-code">CLI-0001</span>
+          </div>
+          <div class="readonly-item">
+            <span class="readonly-label">Nome (Imutável)</span>
+            <span id="editNomeDisplay" class="readonly-value">--</span>
+          </div>
+          <div class="readonly-item">
+            <span class="readonly-label">E-mail (Único / Imutável)</span>
+            <span id="editEmailDisplay" class="readonly-value mono">--</span>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="editTelefone" class="form-label">
+              Telefone <span class="req">*</span>
+            </label>
+            <input
+              type="text"
+              id="editTelefone"
+              class="form-input mono"
+              placeholder="(81) 90000-0000"
+              maxlength="20"
+            />
+            <span class="form-hint">Formato: <code class="mono">^[0-9+() -]{8,20}$</code></span>
+          </div>
+
+          <div class="form-group">
+            <label for="editCidade" class="form-label">
+              Cidade <span class="req">*</span>
+            </label>
+            <input
+              type="text"
+              id="editCidade"
+              class="form-input"
+              placeholder="Ex: Olinda"
+              maxlength="80"
+            />
+            <span class="form-hint">Não pode ser vazia (máx. 80 caracteres).</span>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="modalEditar">Cancelar</button>
+          <button type="submit" id="btnSubmitEditar" class="btn btn-primary">
+            Salvar Alterações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 3: HEALTH CHECK (/health) & CONFIGURAÇÃO DE CONEXÃO DA API
+       ===================================================================== -->
+  <div id="modalHealth" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalHealthTitulo">
+    <div class="modal-card modal-card-lg">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title-row">
+            <h2 id="modalHealthTitulo" class="modal-title">Diagnóstico de Saúde (<code class="mono">GET /health</code>) &amp; Conexão</h2>
+            <span id="healthModalBadge" class="http-badge http-2xx mono">200 OK</span>
+          </div>
+          <p class="modal-subtitle">
+            Verificação de conectividade com o PostgreSQL e carimbo <code class="mono">iniciado_em</code> para a Prova de Persistência (Prints 2 e 3).
+          </p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="modalHealth" aria-label="Fechar modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Health Proof Card (for Print 2 & Print 3) -->
+        <div class="health-proof-box">
+          <div class="health-proof-header">
+            <span class="health-proof-title">Resposta de <code class="mono">GET /health</code></span>
+            <button type="button" id="btnRefreshHealth" class="btn btn-xs btn-secondary">
+              Testar /health Agora
+            </button>
+          </div>
+          <pre id="healthJsonPre" class="code-block mono">{ "status": "verificando..." }</pre>
+          <div class="health-meta-grid">
+            <div class="health-meta-item">
+              <span class="health-meta-label">Campo <code class="mono">iniciado_em</code></span>
+              <strong id="healthMetaIniciado" class="mono">--</strong>
+            </div>
+            <div class="health-meta-item">
+              <span class="health-meta-label">Estado do Banco</span>
+              <strong id="healthMetaBanco">--</strong>
+            </div>
+            <div class="health-meta-item">
+              <span class="health-meta-label">Horário da Consulta</span>
+              <strong id="healthMetaAgora" class="mono">--</strong>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- API Connection Settings -->
+        <div class="config-section">
+          <h3 class="section-subtitle">Configuração do Endpoint Backend</h3>
+          <p class="section-desc">
+            Por padrão, o frontend conecta em <code class="mono">http://localhost:8080</code> (ou na mesma origem quando servido pelo Spring Boot no Azure App Service).
+          </p>
+
+          <div class="form-row-2">
+            <div class="form-group">
+              <label for="inputApiBaseUrl" class="form-label">URL Base da API (Spring Boot)</label>
+              <input
+                type="url"
+                id="inputApiBaseUrl"
+                class="form-input mono"
+                placeholder="http://localhost:8080"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="selectOperationMode" class="form-label">Modo de Operação</label>
+              <select id="selectOperationMode" class="form-input">
+                <option value="auto">Automático (API Real com fallback p/ Simulador)</option>
+                <option value="api">Forçar API Real (Spring Boot + PostgreSQL)</option>
+                <option value="mock">Simulador Local (56 clientes do V2__seed.sql)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="config-actions">
+            <button type="button" id="btnResetMockData" class="btn btn-secondary btn-sm" title="Restaura os 56 clientes originais do V2__seed.sql no simulador local">
+              Restaurar Dados Iniciais do Simulador (56 clientes)
+            </button>
+            <button type="button" id="btnSaveApiConfig" class="btn btn-primary btn-sm">
+              Salvar e Testar Conexão
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       DRAWER: INSPECTOR DE REQUISIÇÕES HTTP (EVIDÊNCIAS QA)
+       ===================================================================== -->
+  <aside id="drawerApiLog" class="drawer-backdrop hidden" aria-label="Inspector de Requisições HTTP">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <div>
+          <h2 class="drawer-title">Inspector de Requisições HTTP</h2>
+          <p class="drawer-subtitle">Histórico ao vivo de chamadas para comprovação dos Critérios de Aceite (200, 201, 204, 400, 404, 409)</p>
+        </div>
+        <div class="drawer-header-actions">
+          <button type="button" id="btnClearLogs" class="btn btn-xs btn-secondary">Limpar</button>
+          <button type="button" id="btnCloseDrawer" class="modal-close" aria-label="Fechar inspector">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div id="apiLogList" class="drawer-body">
+        <!-- Logs renderizados via JS -->
+      </div>
+    </div>
+  </aside>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
+
