@@ -9,7 +9,7 @@
   // =====================================================================
   // 1. DADOS INICIAIS DO SEED (Espelho exato de V2__seed.sql - 56 clientes)
   // =====================================================================
-  const SEED_LIEN = [main id: 1, codigo: 'CLI-0001', nome: 'Mariana Oliveira', email: 'mariana.oliveira@exemplo.com', telefone: '(81) 90000-0001', cidade: 'Recife', ativo: true, criadoEm: '2026-11-02T18:00:01' },
+  const SEED_CLIENTES = [{ id: 1, codigo: 'CLI-0001', nome: 'Mariana Oliveira', email: 'mariana.oliveira@exemplo.com', telefone: '(81) 90000-0001', cidade: 'Recife', ativo: true, criadoEm: '2026-11-02T18:00:01' },
   { id: 2, codigo: 'CLI-0002', nome: 'João Pedro Santos', email: 'joao.santos@exemplo.com', telefone: '(81) 90000-0002', cidade: 'Olinda', ativo: true, criadoEm: '2026-11-02T18:00:02' },
   { id: 3, codigo: 'CLI-0003', nome: 'Beatriz Lima', email: 'beatriz.lima@exemplo.com', telefone: '(81) 90000-0003', cidade: 'Jaboatão dos Guararapes', ativo: true, criadoEm: '2026-11-02T18:00:03' },
   { id: 4, codigo: 'CLI-0004', nome: 'Carlos Eduardo Pereira', email: 'carlos.pereira@exemplo.com', telefone: '(81) 90000-0004', cidade: 'Recife', ativo: true, criadoEm: '2026-11-02T18:00:04' },
