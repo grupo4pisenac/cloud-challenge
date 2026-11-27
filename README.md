@@ -1,8 +1,5 @@
 # Carteira de Clientes da Papelaria (Desafio 08)
 
-Link para rodar:
-https://app-cloud-g02-iniciais-aqhbanc2dvf2fabz.southafricanorth-01.azurewebsites.net/
-
 Sistema de cadastro único de clientes para uma papelaria de bairro, com busca rápida e sem perda de histórico (clientes são **inativados**, nunca excluídos). Este repositório contém o back (API), o front (interface do balcão), o material de QA do grupo e a infraestrutura de nuvem em **Nível A na Azure**.
 
 ## Objetivo
@@ -24,8 +21,8 @@ O objetivo do projeto foi validar esses requisitos pelos critérios de aceitaç�
 
 ## Infraestrutura e Deploy em Nuvem (Nível A — Azure)
 
-- **URL Pública da Aplicação:** `https://app-cloud-g02-iniciais.azurewebsites.net`
-- **Health Check da API:** `https://app-cloud-g02-iniciais.azurewebsites.net/health`
+- **URL Pública da Aplicação:** `https://app-cloud-g02-iniciais-aqhbanc2dvf2fabz.southafricanorth-01.azurewebsites.net/`
+- **Health Check da API:** `https://app-cloud-g02-iniciais-aqhbanc2dvf2fabz.southafricanorth-01.azurewebsites.net/health`
 - **Grupo de Recursos:** `rg-cloud-g02`
 - **Região:** South Africa North
 
