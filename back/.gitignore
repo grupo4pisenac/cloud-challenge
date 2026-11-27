@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Ambiente, Dependências e Logs ###
+.env
+.env.*
+!.env.example
+node_modules/
+*.log
+logs/

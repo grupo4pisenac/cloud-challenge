@@ -1,0 +1,26 @@
+# Variáveis de ambiente e segredos (nunca versionar credenciais reais)
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Dependências e artefatos de build
+node_modules/
+**/node_modules/
+target/
+**/target/
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Logs locais
+*.log
+logs/
+npm-debug.log*
+
+# Sistema Operacional e IDEs
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vercel/
+.github/modernize/
