@@ -75,21 +75,45 @@ const STORAGE_KEYS = {
   MOCK_START: 'papelaria_mock_started_v1'
 };
 
-// Detecta URL padrão inteligente (mesma origem se rodando na porta 8080 ou Azure, senão localhost:8080)
+const STANDALONE_DEV_PORTS = new Set(['3000', '5500', '5501', '5173']);
+
+// Identifica se o front está rodando unificado no backend (:8080) ou em domínio de nuvem (.azurewebsites.net, .onrender.com, etc.)
+function isUnifiedBackendOrigin() {
+  const { protocol, hostname, port } = window.location;
+  if (!protocol.startsWith('http')) return false;
+  if (hostname.endsWith('.azurewebsites.net') || hostname.endsWith('.onrender.com') || port === '8080') {
+    return true;
+  }
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+  if (isLocalHost && STANDALONE_DEV_PORTS.has(port)) {
+    return false;
+  }
+  return true;
+}
+
+// Detecta URL padrão inteligente (mesma origem em Azure/Render/host externo ou backend integrado; localhost:8080 em localhost:3000/file:)
 function getDefaultApiUrl() {
   const saved = localStorage.getItem(STORAGE_KEYS.API_URL);
   if (saved) return saved.replace(/\/+$/, '');
-  const { protocol, hostname, port } = window.location;
-  if (protocol.startsWith('http') && (port === '8080' || hostname.endsWith('.azurewebsites.net'))) {
+  if (isUnifiedBackendOrigin()) {
+    const { protocol, hostname, port } = window.location;
     return `${protocol}//${hostname}${port ? ':' + port : ''}`;
   }
   return 'http://localhost:8080';
 }
 
+// Trava anti-simulador em produção: em domínio de nuvem ou servido pelo backend (:8080), inicia estritamente em 'api'
+function getInitialOperationMode() {
+  if (isUnifiedBackendOrigin()) {
+    return 'api';
+  }
+  return localStorage.getItem(STORAGE_KEYS.OP_MODE) || 'auto';
+}
+
 // Estado Global da Interface
 const state = {
   apiBaseUrl: getDefaultApiUrl(),
-  operationMode: localStorage.getItem(STORAGE_KEYS.OP_MODE) || 'auto', // 'auto' | 'api' | 'mock'
+  operationMode: getInitialOperationMode(), // 'auto' | 'api' | 'mock'
   usingSimulator: false,
   healthData: null,
 
@@ -1300,8 +1324,9 @@ function setupEventListeners() {
   });
 
   document.getElementById('btnRetryApi').addEventListener('click', async () => {
-    state.operationMode = 'auto';
-    localStorage.setItem(STORAGE_KEYS.OP_MODE, 'auto');
+    const retryMode = isUnifiedBackendOrigin() ? 'api' : 'auto';
+    state.operationMode = retryMode;
+    localStorage.setItem(STORAGE_KEYS.OP_MODE, retryMode);
     await verificarHealth();
     await carregarClientes();
     if (!state.usingSimulator) {
@@ -1319,10 +1344,14 @@ function setupEventListeners() {
     const rawUrl = document.getElementById('inputApiBaseUrl').value.trim().replace(/\/+$/, '');
     const mode = document.getElementById('selectOperationMode').value;
 
-    state.apiBaseUrl = rawUrl || 'http://localhost:8080';
+    if (rawUrl) {
+      state.apiBaseUrl = rawUrl;
+      localStorage.setItem(STORAGE_KEYS.API_URL, state.apiBaseUrl);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.API_URL);
+      state.apiBaseUrl = getDefaultApiUrl();
+    }
     state.operationMode = mode;
-
-    localStorage.setItem(STORAGE_KEYS.API_URL, state.apiBaseUrl);
     localStorage.setItem(STORAGE_KEYS.OP_MODE, state.operationMode);
 
     await verificarHealth();
